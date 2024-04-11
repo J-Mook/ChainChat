@@ -1,0 +1,14 @@
+syntax = "proto3";
+package chatmessage;
+
+// [RINF:DART-SIGNAL]
+message SendMessage {
+  string who = 1;
+  string contents = 2;
+}
+
+// [RINF:RUST-SIGNAL]
+message RecvMessage {
+  string who = 1;
+  string contents = 2;
+}

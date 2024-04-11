@@ -216,7 +216,7 @@ class _ChatRoomState extends State<ChatRoom> {
     if (_controller.text.isNotEmpty) {
       setState(() {
         messagesList.insert(0, Pair(1, _controller.text));
-        // messages.insert(0, _controller.text);
+        SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
         _controller.clear();
         FocusScope.of(context).requestFocus(_focusNode);
       });

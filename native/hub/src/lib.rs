@@ -39,7 +39,12 @@ async fn main() {
                 socket.send_to(msg.as_bytes(), &recv_addr).await.unwrap();
             }
 
-            println!("Received: {} from {}", String::from_utf8_lossy(&buf[..len]), recv_addr);
+            println!("Received: {} from {}", msg, recv_addr);
+
+            RecvMessage{
+                who: recv_addr.to_string(),
+                contents: msg.to_string(),
+            }.send_signal_to_dart(None);
         }
     });
 

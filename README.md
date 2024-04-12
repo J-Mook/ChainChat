@@ -1,4 +1,4 @@
-# makaotoalk
+# chain_chat
 
 A new Flutter project.
 

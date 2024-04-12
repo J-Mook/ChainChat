@@ -65,9 +65,8 @@ class _MainBody extends State<MainBody> {
           child: SidebarX(
             controller: _controller,
             items: const [
-              SidebarXItem(icon: Icons.person, label: ' Home'),
-              SidebarXItem(icon: SimpleIcons.openai, label: ' RGBpalette'),
-              SidebarXItem(icon: Icons.settings, label: ' Analyse'),
+              SidebarXItem(icon: Icons.person, label: ' Chat'),
+              SidebarXItem(icon: Icons.settings, label: ' Setting?'),
             ],
             theme: SidebarXTheme(
               width: 60,
@@ -116,77 +115,15 @@ class _MainBody extends State<MainBody> {
             builder:(context, child) {
               switch (_controller.selectedIndex) {
                 case 0:
-                  return DefChatRoom();
-                case 1:
                   return ChatRoom();
-                case 2:
+                case 1:
                   return IPSettingsPage();
                 
                 default:
-                  return DefChatRoom();
+                  return ChatRoom();
               }
             },
           )
-        ),
-      ],
-    );
-  }
-}
-
-class DefChatRoom extends StatefulWidget {
-  const DefChatRoom({super.key});
-
-  @override
-  State<DefChatRoom> createState() => _DefChatRoomState();
-}
-
-class _DefChatRoomState extends State<DefChatRoom> {
-
-  List<String> _chatlist = ["this", "is", "first", "chat"];
-
-  @override
-  Widget build(BuildContext context) {
-    // return Row(
-    //   children: [
-    //     Expanded(
-    //       child: ListView.builder(
-    //         scrollDirection: Axis.horizontal,
-    //         itemCount: _chatlist.length,
-    //         itemBuilder:(context, index) => Text(_chatlist[index]),
-    //       ),
-    //     ),
-    //     Container(
-    //       margin: const EdgeInsets.all(20),
-    //       padding: const EdgeInsets.all(20),
-    //       height: 80,
-    //       decoration: BoxDecoration(
-    //         borderRadius: BorderRadius.circular(24.0),
-    //         color: Colors.white,
-    //       ),
-    //       child: Center(
-    //         child: TextField(),
-    //       ),
-    //     ),
-    //   ],
-    // );
-    return Stack(
-      alignment: Alignment.bottomCenter ,
-      children: [
-        Container(
-          color: Colors.amberAccent,
-          child: ListView(),
-        ),
-        Container(
-          margin: const EdgeInsets.all(20),
-          padding: const EdgeInsets.all(20),
-          height: 80,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24.0),
-            color: Colors.white,
-          ),
-          child: Center(
-            child: TextField(),
-          ),
         ),
       ],
     );
@@ -219,14 +156,14 @@ class _ChatRoomState extends State<ChatRoom> {
         SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
         _controller.clear();
         FocusScope.of(context).requestFocus(_focusNode);
+        // Stream.empty();
       });
     }
   }
   void _recvMessage(String _who, String _contents) {
     if (_contents.isNotEmpty) {
-      setState(() {
-        messagesList.insert(0, Pair(2, _contents));
-      });
+      messagesList.insert(0, Pair(2, _contents));
+      Stream.empty();
     }
   }
 
@@ -249,16 +186,26 @@ class _ChatRoomState extends State<ChatRoom> {
       appBar: AppBar(
         title: Text('Chat Room'),
       ),
-      body: ListView.builder(
-        reverse: true,
-        itemCount: messagesList.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(
-              messagesList[index].msg,
-              textAlign: messagesList[index].who == 1 ? TextAlign.right : TextAlign.left,),
+      body: StreamBuilder(
+        stream: RecvMessage.rustSignalStream,
+        builder: (context, snapshot) {
+          final rustSignal = snapshot.data;
+          if (snapshot.hasData && rustSignal != null) {
+            _recvMessage("2", rustSignal.message.contents);
+          } 
+          return ListView.builder(
+            reverse: true,
+            itemCount: messagesList.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                title: Text(
+                  messagesList[index].msg,
+                  textAlign: messagesList[index].who == 1 ? TextAlign.right : TextAlign.left,
+                ),
+              );
+            },
           );
-        },
+        }
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(10.0),
@@ -281,10 +228,6 @@ class _ChatRoomState extends State<ChatRoom> {
               icon: Icon(Icons.send),
               onPressed: _sendMessage,
             ),
-            // IconButton(
-            //   icon: Icon(Icons.call_received),
-            //   onPressed: _recvMessage,
-            // ),
           ],
         ),
       ),
@@ -305,6 +248,33 @@ class _IPSettingsPageState extends State<IPSettingsPage> {
     if (_ipController.text.isNotEmpty) {
       setState(() {
         ipAddresses.add(_ipController.text.trim());
+        
+        List<String> parts = _ipController.text.split(':');
+        if (parts.length != 2) {
+          print('Invalid input format');
+          return;
+        }
+
+        String ipAddress = parts[0];
+        String portString = parts[1];
+
+        List<String> ipParts = ipAddress.split('.');
+        if (ipParts.length != 4) {
+          print('Invalid IP address format');
+          return;
+        }
+
+        try {
+          int octet1 = int.parse(ipParts[0]);
+          int octet2 = int.parse(ipParts[1]);
+          int octet3 = int.parse(ipParts[2]);
+          int octet4 = int.parse(ipParts[3]);
+          int port = int.parse(portString);
+
+          KnockIP(who: 'HIHI', ipAddrInt1: octet1, ipAddrInt2: octet2, ipAddrInt3: octet3, ipAddrInt4: octet4, port: port).sendSignalToRust(null);
+
+        } catch (e) { print('Error parsing numbers: $e'); }
+
         _ipController.clear();
       });
     }

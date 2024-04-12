@@ -102,7 +102,6 @@ pub async fn udp_machine(){
             let send_msg = msg.contents;
 
             let state = a_shared_state_sender.lock().await;
-            // let state = shared_state.clone();
             
             if (state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0)) {
                 socket.send_to(send_msg.as_bytes(), &state.forward_ip_addr).await;

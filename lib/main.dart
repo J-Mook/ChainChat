@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:simple_icons/simple_icons.dart';
@@ -67,6 +68,7 @@ class _MainBody extends State<MainBody> {
             items: const [
               SidebarXItem(icon: Icons.person, label: ' Chat'),
               SidebarXItem(icon: Icons.settings, label: ' Setting?'),
+              SidebarXItem(icon: Icons.exit_to_app, label: ' Setting?'),
             ],
             theme: SidebarXTheme(
               width: 60,
@@ -117,7 +119,9 @@ class _MainBody extends State<MainBody> {
                 case 0:
                   return ChatRoom();
                 case 1:
-                  return IPSettingsPage();
+                  return EntranceCodeInputPage();
+                case 2:
+                  return EntranceCodeInputPage();
                 
                 default:
                   return ChatRoom();
@@ -151,12 +155,12 @@ class _ChatRoomState extends State<ChatRoom> {
 
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
+      RecvMessage.create().clear();
       setState(() {
         messagesList.insert(0, Pair(1, _controller.text));
         SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
         _controller.clear();
         FocusScope.of(context).requestFocus(_focusNode);
-        // Stream.empty();
       });
     }
   }
@@ -235,96 +239,76 @@ class _ChatRoomState extends State<ChatRoom> {
   }
 }
 
-class IPSettingsPage extends StatefulWidget {
+class EntranceCodeInputPage extends StatefulWidget {
   @override
-  _IPSettingsPageState createState() => _IPSettingsPageState();
+  _EntranceCodeInputPageState createState() => _EntranceCodeInputPageState();
 }
 
-class _IPSettingsPageState extends State<IPSettingsPage> {
-  List<String> ipAddresses = [];
-  final TextEditingController _ipController = TextEditingController();
+class _EntranceCodeInputPageState extends State<EntranceCodeInputPage> {
+  final TextEditingController _controller = TextEditingController();
 
-  void _addIPAddress() {
-    if (_ipController.text.isNotEmpty) {
+  void _enterChatroom() {
+    if (_controller.text.isNotEmpty) {
       setState(() {
-        ipAddresses.add(_ipController.text.trim());
-        
-        List<String> parts = _ipController.text.split(':');
-        if (parts.length != 2) {
-          print('Invalid input format');
-          return;
-        }
-
-        String ipAddress = parts[0];
-        String portString = parts[1];
-
-        List<String> ipParts = ipAddress.split('.');
-        if (ipParts.length != 4) {
-          print('Invalid IP address format');
-          return;
-        }
-
-        try {
-          int octet1 = int.parse(ipParts[0]);
-          int octet2 = int.parse(ipParts[1]);
-          int octet3 = int.parse(ipParts[2]);
-          int octet4 = int.parse(ipParts[3]);
-          int port = int.parse(portString);
-
-          KnockIP(who: 'HIHI', ipAddrInt1: octet1, ipAddrInt2: octet2, ipAddrInt3: octet3, ipAddrInt4: octet4, port: port).sendSignalToRust(null);
-
-        } catch (e) { print('Error parsing numbers: $e'); }
-
-        _ipController.clear();
+        KnockIP(who: 'HIHI', password: _controller.text).sendSignalToRust(null);
+        // _controller.clear();
+        // FocusScope.of(context).requestFocus(_focusNode);
       });
     }
-  }
-
-  void _removeIPAddress(String ip) {
-    setState(() {
-      ipAddresses.remove(ip);
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('IP Settings'),
+        title: Text('Enter Entrance Code'),
       ),
-      body: Column(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: _ipController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Add IP Address',
-                hintText: 'Enter valid IP address',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ),
-          ElevatedButton(
-            onPressed: _addIPAddress,
-            child: Text('Add IP Address'),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: ipAddresses.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(ipAddresses[index]),
-                  trailing: IconButton(
-                    icon: Icon(Icons.delete),
-                    onPressed: () => _removeIPAddress(ipAddresses[index]),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  StreamBuilder(
+                    stream: ThisisMyPassword.rustSignalStream,
+                    builder: (context, snapshot) {
+                      final rustSignal = snapshot.data;
+                      if (snapshot.hasData && rustSignal != null) {
+                        final pss = rustSignal.message.password;
+                        return SelectableText(pss);
+                      } 
+                      return Text("Generating Password...");
+                    }
                   ),
-                );
-              },
-            ),
+                  IconButton(
+                    onPressed: (){ GetMyPassword().sendSignalToRust(null); },
+                    icon: Icon(Icons.recycling)
+                  )
+                ],
+              ),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter your entrance code',
+                      ),
+                      keyboardType: TextInputType.text,
+                      onSubmitted: (value) => _enterChatroom(),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.send),
+                    onPressed: () => _enterChatroom(),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

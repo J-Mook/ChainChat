@@ -8,13 +8,17 @@ message SendMessage {
 }
 
 // [RINF:DART-SIGNAL]
+message GetMyPassword {
+}
+// [RINF:RUST-SIGNAL]
+message ThisisMyPassword {
+  string password = 1;
+}
+
+// [RINF:DART-SIGNAL]
 message KnockIP {
   string who = 1;
-  int32 ip_addr_int1 = 2;
-  int32 ip_addr_int2 = 3;
-  int32 ip_addr_int3 = 4;
-  int32 ip_addr_int4 = 5;
-  int32 port = 6;
+  string password = 2;
 }
 
 // [RINF:RUST-SIGNAL]

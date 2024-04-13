@@ -141,14 +141,9 @@ pub async fn udp_machine(){
 
             let handshakemsg = "HIHI";
             let passowrd = msg.password;
-            print!("{} ", passowrd);
-
             let (oct1, oct2, oct3, oct4) = decryption(passowrd);
 
-            println!("Solve : {}.{}.{}.{}", oct1, oct2, oct3, oct4);
-
             let newIP = SocketAddr::new(Ipv4Addr::new(oct1 as u8,oct2 as u8,oct3 as u8,oct4 as u8).into(), RECV_PORT as u16);
-
             socket.send_to(handshakemsg.as_bytes(), &newIP).await;
 
             println!("Client sent: {}", handshakemsg);
@@ -195,7 +190,7 @@ fn decryption(entrancecode: String) -> (u16, u16, u16, u16){
     let oct3 = oct31 * 26 + oct32;
     let oct4 = oct41 * 26 + oct42;
     
-    // println!("{} Solve : {}.{}.{}.{}", entrancecode, oct1, oct2, oct3, oct4);
+    println!("{} Solve : {}.{}.{}.{}", entrancecode, oct1, oct2, oct3, oct4);
 
     return (oct1, oct2, oct3, oct4);
 }

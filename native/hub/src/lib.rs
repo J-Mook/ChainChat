@@ -86,11 +86,6 @@ pub async fn udp_machine(){
             }
             
             println!("Received: {} from {}", msg, recv_addr);
-            sleep(Duration::from_millis(15));
-            RecvMessage{
-                who: "".to_string(),
-                contents: "".to_string(),
-            }.send_signal_to_dart(None);
         }
     });
 

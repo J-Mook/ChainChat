@@ -163,22 +163,21 @@ class _ChatRoomState extends State<ChatRoom> {
   void _recvMessage(String _who, String _contents) {
     if (_contents.isNotEmpty) {
       messagesList.insert(0, Pair(2, _contents));
-      Stream.empty();
     }
   }
 
-  StreamBuilder _recvStream(){
-    return StreamBuilder(
-      stream: RecvMessage.rustSignalStream,
-      builder: (context, snapshot) {
-        final rustSignal = snapshot.data;
-        if (rustSignal != null) {
-          _recvMessage("2", rustSignal.message.contents);
-        }
-        return Text("");
-      }
-    );
-  }
+  // StreamBuilder _recvStream(){
+  //   return StreamBuilder(
+  //     stream: RecvMessage.rustSignalStream,
+  //     builder: (context, snapshot) {
+  //       final rustSignal = snapshot.data;
+  //       if (rustSignal != null) {
+  //         _recvMessage("2", rustSignal.message.contents);
+  //       }
+  //       return Text("");
+  //     }
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -192,6 +191,7 @@ class _ChatRoomState extends State<ChatRoom> {
           final rustSignal = snapshot.data;
           if (snapshot.hasData && rustSignal != null) {
             _recvMessage("2", rustSignal.message.contents);
+            RecvMessage.create().clear();
           } 
           return ListView.builder(
             reverse: true,

@@ -33,8 +33,8 @@ struct SharedState {
     backward_ip_addr: SocketAddr,
 }
 
-const RECV_PORT:u16 = 6113;
-const SELF_RECV_PORT:u16 = 6112;
+const RECV_PORT:u16 = 6112;
+const SELF_RECV_PORT:u16 = 6113;
 
 pub async fn udp_machine(){
 
@@ -47,8 +47,9 @@ pub async fn udp_machine(){
     let a_shared_state_sender = Arc::clone(&shared_state);
     let a_shared_state_reciver = Arc::clone(&shared_state);
 
+    let local_ip = local_ip().unwrap();
     let self_send_addr = "0.0.0.0:0";
-    let self_recv_addr = SocketAddr::new(local_ip().unwrap().into(), SELF_RECV_PORT);
+    let self_recv_addr = SocketAddr::new(local_ip.into(), SELF_RECV_PORT);
 
 
     tokio::spawn(async move {
@@ -108,6 +109,10 @@ pub async fn udp_machine(){
                 socket.send_to(send_msg.as_bytes(), &state.backward_ip_addr).await;
             }
             println!("Client sent: {}", send_msg);
+            RecvMessage{
+                who: "".to_string(),
+                contents: "".to_string(),
+            }.send_signal_to_dart(None);
         }
     });
     let mut _password_generate: tokio::sync::mpsc::Receiver<rinf::DartSignal<GetMyPassword>> = GetMyPassword::get_dart_signal_receiver();

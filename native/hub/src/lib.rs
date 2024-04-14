@@ -51,7 +51,6 @@ async fn main() {
             let mut buf = [0; 1024];
             let (len, recv_addr) = socket.recv_from(&mut buf).await.unwrap();
             let msg = String::from_utf8_lossy(&buf[..len]);
-            print!("Received: {} from {}", msg, recv_addr);
             
             let mut state = a_shared_state_reciver.lock().await;
             
@@ -60,15 +59,16 @@ async fn main() {
                     who: recv_addr.ip().to_string(),
                     contents: msg.to_string(),
                 }.send_signal_to_dart(None);
-                
-                if state.forward_ip_addr == recv_addr {
+                print!("Received: {} from {}", msg, recv_addr);
+
+                if state.forward_ip_addr.ip() == recv_addr.ip() {
                     if state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
                         print!(" to {}", state.backward_ip_addr);
                         let ret = socket.send_to(msg.as_bytes(), &state.backward_ip_addr).await;
                         match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
                     }
                 }
-                else if state.backward_ip_addr == recv_addr {
+                else if state.backward_ip_addr.ip() == recv_addr.ip() {
                     if state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
                         print!(" to {}", state.forward_ip_addr);
                         let ret = socket.send_to(msg.as_bytes(), &state.forward_ip_addr).await;
@@ -84,25 +84,30 @@ async fn main() {
                 print!("Received command: |{}| |{}|", cmd, data);
 
                 if cmd == "\\NiceToMeetYou"{
+                    
+                    println!("Start Nice to Meet Protocol");
+                    let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
+                    let new_recv_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
+
+                    let ret = socket.send_to(format!("\\SetForwardIP {}", encryptionIP(self_recv_addr)).as_bytes(), &new_recv_addr).await; // SetForwardIP selfIP
+                    match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                    let ret = socket.send_to(format!("\\SetBackwardIP {}", encryptionIP(state.backward_ip_addr)).as_bytes(), &new_recv_addr).await; // SetBackwardIP backIP
+                    match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                    let ret = socket.send_to(format!("\\SetForwardIP {}", data).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
+                    match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                    
+                    state.backward_ip_addr = new_recv_addr;
+                    
+                } else if cmd == "\\SetBackwardIP"{
                     let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
                     state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
-                    
-                    let ret = socket.send_to(format!("\\SetForwardIP{}", encryptionIP(self_recv_addr)).as_bytes(), &recv_addr).await; // SetForwardIP selfIP
-                    match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
-                    let ret = socket.send_to(format!("\\SetBackwardIP{}", encryptionIP(state.backward_ip_addr)).as_bytes(), &recv_addr).await; // SetBackwardIP backIP
-                    match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
-                    let ret = socket.send_to(format!("\\SetForwardIP{}", encryptionIP(recv_addr)).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
-                    match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
-                    
-                    state.backward_ip_addr = SocketAddr::new(recv_addr.ip().into(), port); //
-                }
-                if cmd == "\\SetBackwardIP"{
-                    let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
-                    state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
-                }
-                if cmd == "\\SetForwardIP"{
+                    println!(" (Set Backward IP)");
+                } else if cmd == "\\SetForwardIP"{
                     let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
                     state.forward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
+                    println!(" (Set Forward IP)");
+                } else {
+                    println!(" (Unknown Command)");
                 }
             }
         }
@@ -156,7 +161,7 @@ async fn main() {
         while let Some(dart_signal) = _enter_new_ip.recv().await {
             let msg = dart_signal.message;
 
-            let handshakemsg = "\\NiceToMeetYou";
+            let handshakemsg = format!("\\NiceToMeetYou {}", encryptionIP(self_recv_addr));
             let passowrd = msg.password;
             let (oct1, oct2, oct3, oct4, port) = decryption(&passowrd);
 
@@ -165,7 +170,6 @@ async fn main() {
 
             print!("Client sent: {}", handshakemsg);
             match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
-
         }
     });
 }

@@ -93,8 +93,11 @@ async fn main() {
                     match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
                     let ret = socket.send_to(format!("\\SetBackwardIP {}", encryptionIP(state.backward_ip_addr)).as_bytes(), &new_recv_addr).await; // SetBackwardIP backIP
                     match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
-                    let ret = socket.send_to(format!("\\SetForwardIP {}", data).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
-                    match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                    
+                    if state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
+                        let ret = socket.send_to(format!("\\SetForwardIP {}", data).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
+                        match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                    }
                     
                     state.backward_ip_addr = new_recv_addr;
                     
@@ -168,7 +171,7 @@ async fn main() {
             let newIP = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
             let ret = socket.send_to(handshakemsg.as_bytes(), &newIP).await;
 
-            print!("Client sent: {}", handshakemsg);
+            print!("Client sent: {} to {}", handshakemsg, newIP);
             match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
         }
     });

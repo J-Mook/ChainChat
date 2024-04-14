@@ -1,7 +1,7 @@
 //! This `hub` crate is the
 //! entry point of the Rust logic.
 
-use std::{net::{IpAddr, Ipv4Addr, SocketAddr}, ptr::null, thread::sleep, time::Duration};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use rand::Rng;
 
 use tokio::sync::Mutex;
@@ -10,7 +10,6 @@ use std::sync::Arc;
 // You can replace it with the original `tokio`
 // if you're not targeting the web.
 use tokio_with_wasm::tokio;
-use tokio::sync::RwLock;
 
 mod messages;
 mod sample_functions;
@@ -21,25 +20,19 @@ use local_ip_address::local_ip;
 
 rinf::write_interface!();
 
-async fn main() {
-
-    tokio::spawn(udp_machine());
-
-}
-
 #[derive(Clone)]
 struct SharedState {
     forward_ip_addr: SocketAddr,
     backward_ip_addr: SocketAddr,
 }
 
-const RECV_PORT:u16 = 6112;
-const SELF_RECV_PORT:u16 = 6113;
+const RECV_PORT:u16 = 6113;
+const SELF_RECV_PORT:u16 = 6112;
 
-pub async fn udp_machine(){
+async fn main() {
 
     let shared_state = Arc::new(Mutex::new(SharedState {
-        forward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), RECV_PORT),
+        forward_ip_addr: SocketAddr::new(Ipv4Addr::new(192,168,0,9).into(), RECV_PORT),
         backward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), RECV_PORT),
     }));
 
@@ -61,31 +54,62 @@ pub async fn udp_machine(){
 
             let mut state = a_shared_state_reciver.lock().await;
             
-            RecvMessage{
-                who: recv_addr.ip().to_string(),
-                contents: msg.to_string(),
-            }.send_signal_to_dart(None);
             
-            if state.forward_ip_addr == recv_addr {
-                if state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
-                    let _ = socket.send_to(msg.as_bytes(), &state.backward_ip_addr).await;
+            let msg_content = msg.to_string();
+            if msg_content.chars().nth(0) != Some('\\') {
+                RecvMessage{
+                    who: recv_addr.ip().to_string(),
+                    contents: msg.to_string(),
+                }.send_signal_to_dart(None);
+                
+                if state.forward_ip_addr == recv_addr {
+                    if state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
+                        let _ = socket.send_to(msg.as_bytes(), &state.backward_ip_addr).await;
+                    }
                 }
-            }
-            else if state.backward_ip_addr == recv_addr {
-                if state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
-                    let _ = socket.send_to(msg.as_bytes(), &state.forward_ip_addr).await;
+                else if state.backward_ip_addr == recv_addr {
+                    if state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
+                        let _ = socket.send_to(msg.as_bytes(), &state.forward_ip_addr).await;
+                    }
+                } else {
+                    // // this is newbie
+                    // if state.forward_ip_addr.ip() == Ipv4Addr::new(0, 0, 0, 0) {
+                    //     state.forward_ip_addr = SocketAddr::new(recv_addr.ip().into(), RECV_PORT);
+                    // }
+                    // else if state.backward_ip_addr.ip() == Ipv4Addr::new(0, 0, 0, 0) {
+                    //     state.backward_ip_addr = SocketAddr::new(recv_addr.ip().into(), RECV_PORT);
+                    // } else {
+                    //     // this is real newbie
+                    //     let _ = socket.send_to(msg.as_bytes(), &recv_addr).await;
+                    // }
                 }
             } else {
-                // this is newbie
-
-                if state.forward_ip_addr.ip() == Ipv4Addr::new(0, 0, 0, 0) {
-                    state.forward_ip_addr = SocketAddr::new(recv_addr.ip().into(), RECV_PORT);
+                if let Some(idx) = msg_content.find("\\NiceToMeetYou"){
+                    if idx == 0 {
+                        let (oct1, oct2, oct3, oct4) = decryption(&msg_content[14..].to_string());
+                        state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), RECV_PORT as u16);
+                        
+                        let ret = socket.send_to(format!("\\SetForwardIP{}", encryptionIP(self_recv_addr)).as_bytes(), &recv_addr).await; // SetForwardIP selfIP
+                        match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                        let ret = socket.send_to(format!("\\SetBackwardIP{}", encryptionIP(state.backward_ip_addr)).as_bytes(), &recv_addr).await; // SetBackwardIP backIP
+                        match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                        let ret = socket.send_to(format!("\\SetForwardIP{}", encryptionIP(recv_addr)).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
+                        match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                        
+                        state.backward_ip_addr = SocketAddr::new(recv_addr.ip().into(), RECV_PORT); //
+                    }
                 }
-                else if state.backward_ip_addr.ip() == Ipv4Addr::new(0, 0, 0, 0) {
-                    state.backward_ip_addr = SocketAddr::new(recv_addr.ip().into(), RECV_PORT);
-                } else {
-                    // this is real newbie
-                    let _ = socket.send_to(msg.as_bytes(), &recv_addr).await;
+                if let Some(idx) = msg_content.find("\\SetBackwardIP"){
+                    if idx == 0 {
+                        let (oct1, oct2, oct3, oct4) = decryption(&msg_content[14..].to_string());
+                        state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), RECV_PORT as u16);
+                    }
+                }
+                if let Some(idx) = msg_content.find("\\SetForwardIP"){
+                    if idx == 0 {
+                        let (oct1, oct2, oct3, oct4) = decryption(&msg_content[13..].to_string());
+                        state.forward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), RECV_PORT as u16);
+                    }
                 }
             }
             
@@ -102,13 +126,15 @@ pub async fn udp_machine(){
 
             let state = a_shared_state_sender.lock().await;
             
-            if (state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0)) {
-                socket.send_to(send_msg.as_bytes(), &state.forward_ip_addr).await;
+            print!("Client sent: {}", send_msg);
+            if state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
+                let ret = socket.send_to(send_msg.as_bytes(), &state.forward_ip_addr).await;
+                match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
             }
-            if (state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0)) {
-                socket.send_to(send_msg.as_bytes(), &state.backward_ip_addr).await;
+            if state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
+                let ret = socket.send_to(send_msg.as_bytes(), &state.backward_ip_addr).await;
+                match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
             }
-            println!("Client sent: {}", send_msg);
             RecvMessage{
                 who: "".to_string(),
                 contents: "".to_string(),
@@ -139,19 +165,27 @@ pub async fn udp_machine(){
         while let Some(dart_signal) = _enter_new_ip.recv().await {
             let msg = dart_signal.message;
 
-            let handshakemsg = "HIHI";
+            let handshakemsg = "\\NiceToMeetYou";
             let passowrd = msg.password;
-            let (oct1, oct2, oct3, oct4) = decryption(passowrd);
+            let (oct1, oct2, oct3, oct4) = decryption(&passowrd);
 
-            let newIP = SocketAddr::new(Ipv4Addr::new(oct1 as u8,oct2 as u8,oct3 as u8,oct4 as u8).into(), RECV_PORT as u16);
-            socket.send_to(handshakemsg.as_bytes(), &newIP).await;
+            let newIP = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), RECV_PORT as u16);
+            let ret = socket.send_to(handshakemsg.as_bytes(), &newIP).await;
 
-            println!("Client sent: {}", handshakemsg);
+            print!("Client sent: {}", handshakemsg);
+            match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+
         }
     });
-
 }
 
+fn encryptionIP(ipddr: SocketAddr) -> String{
+
+    let octets: Vec<u8> = ipddr.to_string().split('.')
+        .map(|s| s.parse().unwrap())
+        .collect();
+    return encryption(octets[0], octets[1], octets[2], octets[3]);
+}
 fn encryption(octet1: u8, octet2: u8, octet3: u8, octet4: u8) -> String{
 
     let mut transformed = String::new();
@@ -172,7 +206,7 @@ fn encryption(octet1: u8, octet2: u8, octet3: u8, octet4: u8) -> String{
     return transformed;
 }
 
-fn decryption(entrancecode: String) -> (u16, u16, u16, u16){
+fn decryption(entrancecode: &String) -> (u8, u8, u8, u8){
 
     let key_num1 = entrancecode.chars().nth(0).unwrap() as u16;
     let key_num2 = entrancecode.chars().nth(1).unwrap() as u16;
@@ -192,5 +226,5 @@ fn decryption(entrancecode: String) -> (u16, u16, u16, u16){
     
     println!("{} Solve : {}.{}.{}.{}", entrancecode, oct1, oct2, oct3, oct4);
 
-    return (oct1, oct2, oct3, oct4);
+    return (oct1 as u8, oct2 as u8, oct3 as u8, oct4 as u8);
 }

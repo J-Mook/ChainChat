@@ -150,7 +150,7 @@ async fn main() {
                 let port = v4_addr.port();
                 let octets = ip.octets();
         
-                let encrypted_ip = encryption(octets[0], octets[1], octets[2], octets[3]);
+                let encrypted_ip = encryptionIP(self_recv_addr);
                 
                 ThisisMyPassword{
                     password: encrypted_ip,
@@ -181,50 +181,68 @@ async fn main() {
 
 fn encryptionIP(ipddr: SocketAddr) -> String{
 
-    let octets: Vec<u8> = ipddr.to_string().split('.')
-        .map(|s| s.parse().unwrap())
-        .collect();
-    return encryption(octets[0], octets[1], octets[2], octets[3]);
-}
-fn encryption(octet1: u8, octet2: u8, octet3: u8, octet4: u8) -> String{
+    if let SocketAddr::V4(v4_addr) = ipddr {
+        let octets = v4_addr.ip().octets();
+        let port = v4_addr.port();
 
-    let mut transformed = String::new();
-    let rand_num1 = rand::thread_rng().gen_range(0..=25);
-    let rand_num2 = rand::thread_rng().gen_range(0..=25);
-    transformed.push((rand_num1 as u8 + 65) as char);
-    transformed.push((rand_num2 as u8 + 65) as char);
-    transformed.push((((octet1 / 26 + rand_num1) % 26) as u8 + 65) as char);
-    transformed.push((((octet1 % 26 + rand_num2) % 26) as u8 + 65) as char);
-    transformed.push((((octet2 / 26 + rand_num1) % 26) as u8 + 65) as char);
-    transformed.push((((octet2 % 26 + rand_num2) % 26) as u8 + 65) as char);
-    transformed.push((((octet3 / 26 + rand_num1) % 26) as u8 + 65) as char);
-    transformed.push((((octet3 % 26 + rand_num2) % 26) as u8 + 65) as char);
-    transformed.push((((octet4 / 26 + rand_num1) % 26) as u8 + 65) as char);
-    transformed.push((((octet4 % 26 + rand_num2) % 26) as u8 + 65) as char);
-    println!("I'm {}.{}.{}.{} : {}", octet1, octet2, octet3, octet4, transformed);
-
-    return transformed;
+        let mut transformed = String::new();
+        let rand_num1: u8 = rand::thread_rng().gen_range(0..=25);
+        let rand_num2: u8 = rand::thread_rng().gen_range(0..=25);
+        let rand_num3: u8 = rand::thread_rng().gen_range(0..=25);
+        transformed.push((rand_num1 as u8 + 65) as char);
+        transformed.push((rand_num2 as u8 + 65) as char);
+        transformed.push((((octets[0] / 26 + rand_num1) % 26) as u8 + 65) as char);
+        transformed.push((((octets[0] % 26 + rand_num2) % 26) as u8 + 65) as char);
+        transformed.push((((octets[1] / 26 + rand_num1) % 26) as u8 + 65) as char);
+        transformed.push((((octets[1] % 26 + rand_num3) % 26) as u8 + 65) as char);
+        transformed.push((((octets[2] / 26 + rand_num1) % 26) as u8 + 65) as char);
+        transformed.push((((octets[2] % 26 + rand_num2) % 26) as u8 + 65) as char);
+        transformed.push((((octets[3] / 26 + rand_num3) % 26) as u8 + 65) as char);
+        transformed.push((((octets[3] % 26 + rand_num2) % 26) as u8 + 65) as char);
+        
+        transformed.push((rand_num3 as u8 + 65) as char);
+        let port_str = format!("{:05}", port);
+        transformed.push(((port_str.chars().nth(0).unwrap().to_digit(10).unwrap() as u8 + rand_num1) % 26 + 65) as char);
+        transformed.push(((port_str.chars().nth(1).unwrap().to_digit(10).unwrap() as u8 + rand_num3) % 26 + 65) as char);
+        transformed.push(((port_str.chars().nth(2).unwrap().to_digit(10).unwrap() as u8 + rand_num1) % 26 + 65) as char);
+        transformed.push(((port_str.chars().nth(3).unwrap().to_digit(10).unwrap() as u8 + rand_num2) % 26 + 65) as char);
+        transformed.push(((port_str.chars().nth(4).unwrap().to_digit(10).unwrap() as u8 + rand_num3) % 26 + 65) as char);
+        
+        println!("I'm {}.{}.{}.{}:{} - {}", octets[0], octets[1], octets[2], octets[3], port, transformed);
+        
+        return transformed;
+    }
+    return "".to_string();
 }
 
 fn decryption(entrancecode: &String) -> (u8, u8, u8, u8){
 
     let key_num1 = entrancecode.chars().nth(0).unwrap() as u16;
     let key_num2 = entrancecode.chars().nth(1).unwrap() as u16;
+    let key_num3 = entrancecode.chars().nth(10).unwrap() as u16;
+
     let oct11 = ((entrancecode.chars().nth(2).unwrap() as u16 + 26) - key_num1) % 26;
     let oct12 = ((entrancecode.chars().nth(3).unwrap() as u16 + 26) - key_num2) % 26;
     let oct21 = ((entrancecode.chars().nth(4).unwrap() as u16 + 26) - key_num1) % 26;
-    let oct22 = ((entrancecode.chars().nth(5).unwrap() as u16 + 26) - key_num2) % 26;
+    let oct22 = ((entrancecode.chars().nth(5).unwrap() as u16 + 26) - key_num3) % 26;
     let oct31 = ((entrancecode.chars().nth(6).unwrap() as u16 + 26) - key_num1) % 26;
     let oct32 = ((entrancecode.chars().nth(7).unwrap() as u16 + 26) - key_num2) % 26;
-    let oct41 = ((entrancecode.chars().nth(8).unwrap() as u16 + 26) - key_num1) % 26;
+    let oct41 = ((entrancecode.chars().nth(8).unwrap() as u16 + 26) - key_num3) % 26;
     let oct42 = ((entrancecode.chars().nth(9).unwrap() as u16 + 26) - key_num2) % 26;
+
+    let port1 = ((entrancecode.chars().nth(11).unwrap() as u16 + 26 - key_num1)) % 26;
+    let port2 = ((entrancecode.chars().nth(12).unwrap() as u16 + 26 - key_num3)) % 26;
+    let port3 = ((entrancecode.chars().nth(13).unwrap() as u16 + 26 - key_num1)) % 26;
+    let port4 = ((entrancecode.chars().nth(14).unwrap() as u16 + 26 - key_num2)) % 26;
+    let port5 = ((entrancecode.chars().nth(15).unwrap() as u16 + 26 - key_num3)) % 26;
     
     let oct1 = oct11 * 26 + oct12;
     let oct2 = oct21 * 26 + oct22;
     let oct3 = oct31 * 26 + oct32;
     let oct4 = oct41 * 26 + oct42;
+    let port = port1 * 10000 + port2 * 1000 + port3 * 100 + port4 * 10 + port5;
     
-    println!("{} Solve : {}.{}.{}.{}", entrancecode, oct1, oct2, oct3, oct4);
+    println!("{} Solve : {}.{}.{}.{}:{}", entrancecode, oct1, oct2, oct3, oct4, port);
 
     return (oct1 as u8, oct2 as u8, oct3 as u8, oct4 as u8);
 }

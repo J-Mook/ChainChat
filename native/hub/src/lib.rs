@@ -86,8 +86,8 @@ async fn main() {
             } else {
                 if let Some(idx) = msg_content.find("\\NiceToMeetYou"){
                     if idx == 0 {
-                        let (oct1, oct2, oct3, oct4) = decryption(&msg_content[14..].to_string());
-                        state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), RECV_PORT as u16);
+                        let (oct1, oct2, oct3, oct4, port) = decryption(&msg_content[14..].to_string());
+                        state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
                         
                         let ret = socket.send_to(format!("\\SetForwardIP{}", encryptionIP(self_recv_addr)).as_bytes(), &recv_addr).await; // SetForwardIP selfIP
                         match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
@@ -96,19 +96,19 @@ async fn main() {
                         let ret = socket.send_to(format!("\\SetForwardIP{}", encryptionIP(recv_addr)).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
                         match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
                         
-                        state.backward_ip_addr = SocketAddr::new(recv_addr.ip().into(), RECV_PORT); //
+                        state.backward_ip_addr = SocketAddr::new(recv_addr.ip().into(), port); //
                     }
                 }
                 if let Some(idx) = msg_content.find("\\SetBackwardIP"){
                     if idx == 0 {
-                        let (oct1, oct2, oct3, oct4) = decryption(&msg_content[14..].to_string());
-                        state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), RECV_PORT as u16);
+                        let (oct1, oct2, oct3, oct4, port) = decryption(&msg_content[14..].to_string());
+                        state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
                     }
                 }
                 if let Some(idx) = msg_content.find("\\SetForwardIP"){
                     if idx == 0 {
-                        let (oct1, oct2, oct3, oct4) = decryption(&msg_content[13..].to_string());
-                        state.forward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), RECV_PORT as u16);
+                        let (oct1, oct2, oct3, oct4, port) = decryption(&msg_content[13..].to_string());
+                        state.forward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
                     }
                 }
             }
@@ -167,9 +167,9 @@ async fn main() {
 
             let handshakemsg = "\\NiceToMeetYou";
             let passowrd = msg.password;
-            let (oct1, oct2, oct3, oct4) = decryption(&passowrd);
+            let (oct1, oct2, oct3, oct4, port) = decryption(&passowrd);
 
-            let newIP = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), RECV_PORT as u16);
+            let newIP = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
             let ret = socket.send_to(handshakemsg.as_bytes(), &newIP).await;
 
             print!("Client sent: {}", handshakemsg);
@@ -215,7 +215,7 @@ fn encryptionIP(ipddr: SocketAddr) -> String{
     return "".to_string();
 }
 
-fn decryption(entrancecode: &String) -> (u8, u8, u8, u8){
+fn decryption(entrancecode: &String) -> (u8, u8, u8, u8, u16){
 
     let key_num1 = entrancecode.chars().nth(0).unwrap() as u16;
     let key_num2 = entrancecode.chars().nth(1).unwrap() as u16;
@@ -244,5 +244,5 @@ fn decryption(entrancecode: &String) -> (u8, u8, u8, u8){
     
     println!("{} Solve : {}.{}.{}.{}:{}", entrancecode, oct1, oct2, oct3, oct4, port);
 
-    return (oct1 as u8, oct2 as u8, oct3 as u8, oct4 as u8);
+    return (oct1 as u8, oct2 as u8, oct3 as u8, oct4 as u8, port as u16);
 }

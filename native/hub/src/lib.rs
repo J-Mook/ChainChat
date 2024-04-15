@@ -27,7 +27,7 @@ struct SharedState {
     backward_ip_addr: SocketAddr,
 }
 
-const SELF_RECV_PORT:u16 = 6115;
+const SELF_RECV_PORT:u16 = 6112;
 
 async fn main() {
     

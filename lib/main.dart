@@ -373,25 +373,16 @@ class _EntranceCodeInputPageState extends State<EntranceCodeInputPage> {
                   ),
                 ],
               ),
-              // Row(
-              //   children: <Widget>[
-              //     Expanded(
-              //       child: TextField(
-              //         controller: _controllerCode,
-              //         decoration: const InputDecoration(
-              //           border: OutlineInputBorder(),
-              //           hintText: 'Enter your entrance code',
-              //         ),
-              //         keyboardType: TextInputType.text,
-              //         onSubmitted: (value) => _enterChatroom(),
-              //       ),
-              //     ),
-              //     IconButton(
-              //       icon: Icon(Icons.send),
-              //       onPressed: () => _enterChatroom(),
-              //     ),
-              //   ],
-              // ),
+              StreamBuilder(
+                stream: RecvMessage.rustSignalStream,
+                builder: (context, snapshot) {
+                  final rustSignal = snapshot.data;
+                  if (snapshot.hasData && rustSignal != null) {
+                    Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.contents);
+                  }
+                  return Text("");
+                }
+              ),
             ],
           ),
         ),

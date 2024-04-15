@@ -22,29 +22,29 @@ rinf::write_interface!();
 
 #[derive(Clone)]
 struct SharedState {
+    my_name: String,
     forward_ip_addr: SocketAddr,
     backward_ip_addr: SocketAddr,
 }
 
-const RECV_PORT:u16 = 6113;
-const SELF_RECV_PORT:u16 = 6112;
+const SELF_RECV_PORT:u16 = 6115;
 
 async fn main() {
-
-    let shared_state = Arc::new(Mutex::new(SharedState {
-        forward_ip_addr: SocketAddr::new(Ipv4Addr::new(192,168,0,9).into(), RECV_PORT),
-        backward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), RECV_PORT),
-    }));
-
-    let a_shared_state_knocker = Arc::clone(&shared_state);
-    let a_shared_state_sender = Arc::clone(&shared_state);
-    let a_shared_state_reciver = Arc::clone(&shared_state);
-
+    
     let local_ip = local_ip().unwrap();
     let self_send_addr = "0.0.0.0:0";
     let self_recv_addr = SocketAddr::new(local_ip.into(), SELF_RECV_PORT);
-
-
+    
+        let shared_state = Arc::new(Mutex::new(SharedState {
+            my_name: local_ip.to_string(),
+            forward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
+            backward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
+        }));
+    
+        let a_shared_state_knocker = Arc::clone(&shared_state);
+        let a_shared_state_sender = Arc::clone(&shared_state);
+        let a_shared_state_reciver = Arc::clone(&shared_state);
+    
     tokio::spawn(async move {
         let socket = UdpSocket::bind(self_recv_addr).await.unwrap();
         loop {
@@ -54,6 +54,8 @@ async fn main() {
             
             let mut state = a_shared_state_reciver.lock().await;
             
+            // let whoname = &msg[..msg.find(":").unwrap()];
+            // let msg_context = &msg[msg.find(":").unwrap()+1..];
             if msg.chars().nth(0) != Some('\\') {
                 RecvMessage{
                     who: recv_addr.ip().to_string(),
@@ -84,31 +86,40 @@ async fn main() {
                 print!("Received command: |{}| |{}|", cmd, data);
 
                 if cmd == "\\NiceToMeetYou"{
-                    
+
                     println!("Start Nice to Meet Protocol");
                     let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
                     let new_recv_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
 
-                    let ret = socket.send_to(format!("\\SetForwardIP {}", encryptionIP(self_recv_addr)).as_bytes(), &new_recv_addr).await; // SetForwardIP selfIP
-                    match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
-                    let ret = socket.send_to(format!("\\SetBackwardIP {}", encryptionIP(state.backward_ip_addr)).as_bytes(), &new_recv_addr).await; // SetBackwardIP backIP
-                    match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
-                    
-                    if state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
-                        let ret = socket.send_to(format!("\\SetForwardIP {}", data).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
+                    if new_recv_addr != self_recv_addr {
+
+                        let ret = socket.send_to(format!("\\SetForwardIP {}", encryptionIP(self_recv_addr)).as_bytes(), &new_recv_addr).await; // SetForwardIP selfIP
                         match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                        let ret = socket.send_to(format!("\\SetBackwardIP {}", encryptionIP(state.backward_ip_addr)).as_bytes(), &new_recv_addr).await; // SetBackwardIP backIP
+                        match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                        
+                        if state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
+                            let ret = socket.send_to(format!("\\SetForwardIP {}", data).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
+                            match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+                        }
+                        state.backward_ip_addr = new_recv_addr;
+                        
+                    } else {
+                        println!("It's your password idiot");
                     }
                     
-                    state.backward_ip_addr = new_recv_addr;
-                    
                 } else if cmd == "\\SetBackwardIP"{
-                    let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
-                    state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
-                    println!(" (Set Backward IP)");
+                    if state.forward_ip_addr.ip().to_string() != data {
+                        let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
+                        state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
+                        println!(" (Set Backward IP)");
+                    }
                 } else if cmd == "\\SetForwardIP"{
-                    let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
-                    state.forward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
-                    println!(" (Set Forward IP)");
+                    if state.backward_ip_addr.ip().to_string() != data {
+                        let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
+                        state.forward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
+                        println!(" (Set Forward IP)");
+                    }
                 } else {
                     println!(" (Unknown Command)");
                 }
@@ -121,9 +132,9 @@ async fn main() {
         let socket = UdpSocket::bind(self_send_addr).await.unwrap();
         while let Some(dart_signal) = _message_sender.recv().await {
             let msg = dart_signal.message;
-            let send_msg = msg.contents;
-
             let state = a_shared_state_sender.lock().await;
+            
+            let send_msg = format!("{}:{}", state.my_name, msg.contents);
             
             print!("Client sent: {}", send_msg);
             if state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
@@ -173,6 +184,14 @@ async fn main() {
 
             print!("Client sent: {} to {}", handshakemsg, newIP);
             match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+        }
+    });
+    let mut _set_name: tokio::sync::mpsc::Receiver<rinf::DartSignal<SetMyName>> = SetMyName::get_dart_signal_receiver();
+    tokio::spawn(async move {
+        while let Some(dart_signal) = _set_name.recv().await {
+            let msg = dart_signal.message;
+            let mut state = a_shared_state_knocker.lock().await;
+            state.my_name = msg.name;
         }
     });
 }

@@ -10,6 +10,10 @@ message SendMessage {
 // [RINF:DART-SIGNAL]
 message GetMyPassword {
 }
+// [RINF:DART-SIGNAL]
+message SetMyName {
+  string name = 1;
+}
 // [RINF:RUST-SIGNAL]
 message ThisisMyPassword {
   string password = 1;

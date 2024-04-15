@@ -10,15 +10,17 @@ class InfoProvider with ChangeNotifier {
   }
 
   List<MessagePair> messagesList = [];
-  void addmessage(bool me, String mssg) {
-    messagesList.insert(0, MessagePair(me, mssg));
+  void addmessage(bool me, String name, String mssg) {
+    if(name.isNotEmpty && mssg.isNotEmpty)
+      messagesList.insert(0, MessagePair(me, name, mssg));
   }
 
 }
 
 class MessagePair {
   bool me;
+  String name;
   String msg;
 
-  MessagePair(this.me, this.msg);
+  MessagePair(this.me, this.name, this.msg);
 }

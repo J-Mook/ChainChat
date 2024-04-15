@@ -159,19 +159,19 @@ class _ChatRoomState extends State<ChatRoom> {
   final FocusNode _focusNode = FocusNode();
 
 
-  void _sendMessage(BuildContext context) {
-    if (_controller.text.isNotEmpty) {
-      Provider.of<InfoProvider>(context).addmessage(true, _controller.text);
-      SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
-      _controller.clear();
-      FocusScope.of(context).requestFocus(_focusNode);
-    }
-  }
-  void _recvMessage(String _who, String _contents) {
-    if (_contents.isNotEmpty) {
-      Provider.of<InfoProvider>(context).addmessage(false, _contents);
-    }
-  }
+  // void _sendMessage(BuildContext context) {
+  //   if (_controller.text.isNotEmpty) {
+  //     Provider.of<InfoProvider>(context).addmessage(true, _controller.text);
+  //     SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
+  //     _controller.clear();
+  //     FocusScope.of(context).requestFocus(_focusNode);
+  //   }
+  // }
+  // void _recvMessage(String _who, String _contents) {
+  //   if (_contents.isNotEmpty) {
+  //     Provider.of<InfoProvider>(context).addmessage(false, _contents);
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +188,7 @@ class _ChatRoomState extends State<ChatRoom> {
         builder: (context, snapshot) {
           final rustSignal = snapshot.data;
           if (snapshot.hasData && rustSignal != null) {
-            _recvMessage("2", rustSignal.message.contents);
+            Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
           }
           return ListView.builder(
             reverse: true,
@@ -199,7 +199,7 @@ class _ChatRoomState extends State<ChatRoom> {
                   mainAxisAlignment: messagesList[index].me ? MainAxisAlignment.end : MainAxisAlignment.start,
                   children: [
                     if (!messagesList[index].me) ...[
-                      CircleAvatar(child: Text("A")), // 다른 사람의 메시지에는 아바타 표시
+                      CircleAvatar(child: Text(messagesList[index].name)), // 다른 사람의 메시지에는 아바타 표시
                       SizedBox(width: 10),
                     ],
                     Container(
@@ -243,7 +243,7 @@ class _ChatRoomState extends State<ChatRoom> {
                 ),
                 onSubmitted: (value){
                   if (_controller.text.isNotEmpty) {
-                    info.addmessage(true, _controller.text);
+                    info.addmessage(true, "Me", _controller.text);
                     SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
                     _controller.clear();
                     FocusScope.of(context).requestFocus(_focusNode);
@@ -255,7 +255,7 @@ class _ChatRoomState extends State<ChatRoom> {
               icon: Icon(Icons.send),
               onPressed: () {
                if (_controller.text.isNotEmpty) {
-                  info.addmessage(true, _controller.text);
+                  info.addmessage(true, "Me", _controller.text);
                   SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
                   _controller.clear();
                   FocusScope.of(context).requestFocus(_focusNode);
@@ -357,7 +357,7 @@ class _EntranceCodeInputPageState extends State<EntranceCodeInputPage> {
                 builder: (context, snapshot) {
                   final rustSignal = snapshot.data;
                   if (snapshot.hasData && rustSignal != null) {
-                    Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.contents);
+                    Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
                   }
                   return Text("");
                 }

@@ -54,12 +54,14 @@ async fn main() {
             
             let mut state = a_shared_state_reciver.lock().await;
             
-            // let whoname = &msg[..msg.find(":").unwrap()];
-            // let msg_context = &msg[msg.find(":").unwrap()+1..];
             if msg.chars().nth(0) != Some('\\') {
+
+                let whoname = &msg[..msg.find(":").unwrap()];
+                let msg_context = &msg[msg.find(":").unwrap()+1..];
+
                 RecvMessage{
-                    who: recv_addr.ip().to_string(),
-                    contents: msg.to_string(),
+                    who: whoname.to_string(),
+                    contents: msg_context.to_string(),
                 }.send_signal_to_dart(None);
                 print!("Received: {} from {}", msg, recv_addr);
 

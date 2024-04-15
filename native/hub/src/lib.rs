@@ -32,24 +32,24 @@ const SELF_RECV_PORT:u16 = 6112;
 async fn main() {
     
     let local_ip = local_ip().unwrap();
+    let socket_recv = UdpSocket::bind(SocketAddr::new(local_ip.into(), 0)).await.unwrap();
+    let self_recv_addr = socket_recv.local_addr().unwrap();
     let self_send_addr = "0.0.0.0:0";
-    let self_recv_addr = SocketAddr::new(local_ip.into(), SELF_RECV_PORT);
     
-        let shared_state = Arc::new(Mutex::new(SharedState {
-            my_name: local_ip.to_string(),
-            forward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
-            backward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
-        }));
-    
-        let a_shared_state_knocker = Arc::clone(&shared_state);
-        let a_shared_state_sender = Arc::clone(&shared_state);
-        let a_shared_state_reciver = Arc::clone(&shared_state);
+    let shared_state = Arc::new(Mutex::new(SharedState {
+        my_name: local_ip.to_string(),
+        forward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
+        backward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
+    }));
+
+    let a_shared_state_knocker = Arc::clone(&shared_state);
+    let a_shared_state_sender = Arc::clone(&shared_state);
+    let a_shared_state_reciver = Arc::clone(&shared_state);
     
     tokio::spawn(async move {
-        let socket = UdpSocket::bind(self_recv_addr).await.unwrap();
         loop {
             let mut buf = [0; 1024];
-            let (len, recv_addr) = socket.recv_from(&mut buf).await.unwrap();
+            let (len, recv_addr) = socket_recv.recv_from(&mut buf).await.unwrap();
             let msg = String::from_utf8_lossy(&buf[..len]);
             
             let mut state = a_shared_state_reciver.lock().await;
@@ -66,14 +66,14 @@ async fn main() {
                 if state.forward_ip_addr.ip() == recv_addr.ip() {
                     if state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
                         print!(" to {}", state.backward_ip_addr);
-                        let ret = socket.send_to(msg.as_bytes(), &state.backward_ip_addr).await;
+                        let ret = socket_recv.send_to(msg.as_bytes(), &state.backward_ip_addr).await;
                         match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
                     }
                 }
                 else if state.backward_ip_addr.ip() == recv_addr.ip() {
                     if state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
                         print!(" to {}", state.forward_ip_addr);
-                        let ret = socket.send_to(msg.as_bytes(), &state.forward_ip_addr).await;
+                        let ret = socket_recv.send_to(msg.as_bytes(), &state.forward_ip_addr).await;
                         match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
                     }
                 } else {
@@ -93,13 +93,13 @@ async fn main() {
 
                     if new_recv_addr != self_recv_addr {
 
-                        let ret = socket.send_to(format!("\\SetForwardIP {}", encryptionIP(self_recv_addr)).as_bytes(), &new_recv_addr).await; // SetForwardIP selfIP
+                        let ret = socket_recv.send_to(format!("\\SetForwardIP {}", encryptionIP(self_recv_addr)).as_bytes(), &new_recv_addr).await; // SetForwardIP selfIP
                         match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
-                        let ret = socket.send_to(format!("\\SetBackwardIP {}", encryptionIP(state.backward_ip_addr)).as_bytes(), &new_recv_addr).await; // SetBackwardIP backIP
+                        let ret = socket_recv.send_to(format!("\\SetBackwardIP {}", encryptionIP(state.backward_ip_addr)).as_bytes(), &new_recv_addr).await; // SetBackwardIP backIP
                         match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
                         
                         if state.backward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
-                            let ret = socket.send_to(format!("\\SetForwardIP {}", data).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
+                            let ret = socket_recv.send_to(format!("\\SetForwardIP {}", data).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP recv
                             match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
                         }
                         state.backward_ip_addr = new_recv_addr;

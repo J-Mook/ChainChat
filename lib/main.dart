@@ -155,8 +155,6 @@ class ChatRoom extends StatefulWidget {
 }
 
 class _ChatRoomState extends State<ChatRoom> {
-  // final List<String> messages = [];
-  // final List<Pair<bool, String>> messagesList = [];
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -197,25 +195,6 @@ class _ChatRoomState extends State<ChatRoom> {
             itemCount: messagesList.length,
             itemBuilder: (context, index) {
               return ListTile(
-                // title: Text(
-                //   messagesList[index].msg,
-                //   textAlign: messagesList[index].who == 1 ? TextAlign.right : TextAlign.left,
-                // ),
-                // title: Container(
-                //   padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                //   margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                //   decoration: BoxDecoration(
-                //     color: messagesList[index].who == 1 ? Colors.blue : Colors.grey[300],
-                //     borderRadius: BorderRadius.circular(20),
-                //   ),
-                //   child: SelectableText(
-                //     messagesList[index].msg,
-                //     style: TextStyle(
-                //       color: messagesList[index].who == 1 ? Colors.white : Colors.black,
-                //     ),
-                //     textAlign: messagesList[index].who == 1 ? TextAlign.right : TextAlign.left,
-                //   ),
-                // ),
                 title: Row(
                   mainAxisAlignment: messagesList[index].me ? MainAxisAlignment.end : MainAxisAlignment.start,
                   children: [

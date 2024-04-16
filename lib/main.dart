@@ -21,7 +21,7 @@ void main() async {
   await windowManager.ensureInitialized();
 
   await localNotifier.setup(
-    appName: 'local_notifier_example',
+    appName: 'mookscord',
     shortcutPolicy: ShortcutPolicy.requireCreate,
   );
 
@@ -65,6 +65,11 @@ class MainApp extends StatelessWidget {
       themeMode: themeProvider.themeMode,
 
     );
+  }
+
+  @override
+  void dispose() {
+    ExitSignal().sendSignalToRust(null);
   }
 }
 
@@ -125,6 +130,7 @@ class _MainBody extends State<MainBody> with WidgetsBindingObserver {
         stream: RecvMessage.rustSignalStream,
         builder: (context, snapshot) {
           final rustSignal = snapshot.data;
+          RecvMessage.create().clear();
           return Text("");
         }
       );
@@ -137,6 +143,7 @@ class _MainBody extends State<MainBody> with WidgetsBindingObserver {
           if (snapshot.hasData && rustSignal != null) {
             // Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
             showNotification(rustSignal.message.contents);
+            RecvMessage.create().clear();
           }
           return Text("");
         }

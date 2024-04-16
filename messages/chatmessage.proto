@@ -11,6 +11,9 @@ message SendMessage {
 message GetMyPassword {
 }
 // [RINF:DART-SIGNAL]
+message ExitSignal {
+}
+// [RINF:DART-SIGNAL]
 message SetMyName {
   string name = 1;
 }

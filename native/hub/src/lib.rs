@@ -42,6 +42,7 @@ async fn main() {
         backward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
     }));
 
+    let a_shared_state_exiter = Arc::clone(&shared_state);
     let a_shared_state_knocker = Arc::clone(&shared_state);
     let a_shared_state_sender = Arc::clone(&shared_state);
     let a_shared_state_reciver = Arc::clone(&shared_state);
@@ -194,6 +195,19 @@ async fn main() {
             let msg = dart_signal.message;
             let mut state = a_shared_state_knocker.lock().await;
             state.my_name = msg.name;
+        }
+    });
+
+    let mut _exit_signal: tokio::sync::mpsc::Receiver<rinf::DartSignal<ExitSignal>> = ExitSignal::get_dart_signal_receiver();
+    tokio::spawn(async move {
+        let socket = UdpSocket::bind(self_send_addr).await.unwrap();
+        while let Some(dart_signal) = _exit_signal.recv().await {
+            let mut state = a_shared_state_exiter.lock().await;
+            let ret = socket.send_to(format!("\\SetForwardIP {}", encryptionIP(state.forward_ip_addr)).as_bytes(), &state.backward_ip_addr).await; // SetForwardIP selfIP
+            match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+            let ret = socket.send_to(format!("\\SetBackwardIP {}", encryptionIP(state.backward_ip_addr)).as_bytes(), &state.forward_ip_addr).await; // SetBackwardIP backIP
+            match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
+            
         }
     });
 }

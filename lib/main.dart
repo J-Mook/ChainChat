@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -11,9 +13,20 @@ import 'provider/themeprovider.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 
+import 'package:local_notifier/local_notifier.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  await localNotifier.setup(
+    appName: 'local_notifier_example',
+    shortcutPolicy: ShortcutPolicy.requireCreate,
+  );
+
   await initializeRust();
+  
   runApp(
     MultiProvider(
       providers: [
@@ -44,6 +57,8 @@ class MainApp extends StatelessWidget {
         '/Enterance' : (context) => EntrancePage(),
         '/MainPage' : (context) => MainBody(),
       },
+      // builder: BotToastInit(),
+      // navigatorObservers: [BotToastNavigatorObserver()],
 
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
@@ -60,9 +75,75 @@ class MainBody extends StatefulWidget {
   State<MainBody> createState() => _MainBody();
 }
 
-class _MainBody extends State<MainBody> {
+class _MainBody extends State<MainBody> with WidgetsBindingObserver {
 
   SidebarXController _controller = SidebarXController(selectedIndex: 0);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+  
+  LocalNotification? _chatNotification;
+  void showNotification(String context) {
+    if (_chatNotification != null) {
+      _chatNotification!.close();
+    }
+    _chatNotification = LocalNotification(
+      identifier: '_chatNotification',
+      title: '메세지가 도착했습니다.',
+      body: context,
+      actions: [
+        LocalNotificationAction(
+          text: '답장하기',
+        ),
+      ],
+      silent: true,
+    );
+
+    _chatNotification?.show();
+    Timer(Duration(seconds: 5), () {
+      _chatNotification?.close();
+    });
+    
+  }
+
+  StreamBuilder? recvstream;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      print("App is in Foreground");
+      recvstream = StreamBuilder(
+        stream: RecvMessage.rustSignalStream,
+        builder: (context, snapshot) {
+          final rustSignal = snapshot.data;
+          return Text("");
+        }
+      );
+    } else {
+      print("App is in Background");
+      recvstream = StreamBuilder(
+        stream: RecvMessage.rustSignalStream,
+        builder: (context, snapshot) {
+          final rustSignal = snapshot.data;
+          if (snapshot.hasData && rustSignal != null) {
+            // Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
+            showNotification(rustSignal.message.contents);
+          }
+          return Text("");
+        }
+      );
+      setState(() { });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +151,7 @@ class _MainBody extends State<MainBody> {
     return Scaffold(
       body: Row(
         children: [
+          Container(child: recvstream),
           Container(
             margin: EdgeInsets.fromLTRB(5, 5, 0, 5),
             child: SidebarX(
@@ -141,14 +223,6 @@ class _MainBody extends State<MainBody> {
   }
 }
 
-// class Pair<T1, T2> {
-//   final T1 me;
-//   final T2 msg;
-
-//   Pair(this.me, this.msg);
-// }
-
-
 class ChatRoom extends StatefulWidget {
   @override
   _ChatRoomState createState() => _ChatRoomState();
@@ -157,21 +231,6 @@ class ChatRoom extends StatefulWidget {
 class _ChatRoomState extends State<ChatRoom> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-
-
-  // void _sendMessage(BuildContext context) {
-  //   if (_controller.text.isNotEmpty) {
-  //     Provider.of<InfoProvider>(context).addmessage(true, _controller.text);
-  //     SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
-  //     _controller.clear();
-  //     FocusScope.of(context).requestFocus(_focusNode);
-  //   }
-  // }
-  // void _recvMessage(String _who, String _contents) {
-  //   if (_contents.isNotEmpty) {
-  //     Provider.of<InfoProvider>(context).addmessage(false, _contents);
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +248,7 @@ class _ChatRoomState extends State<ChatRoom> {
           final rustSignal = snapshot.data;
           if (snapshot.hasData && rustSignal != null) {
             Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
+            RecvMessage.create().clear();
           }
           return ListView.builder(
             reverse: true,

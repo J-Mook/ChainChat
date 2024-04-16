@@ -112,15 +112,19 @@ async fn main() {
                     }
                     
                 } else if cmd == "\\SetBackwardIP"{
-                    if state.forward_ip_addr.ip().to_string() != data {
-                        let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
-                        state.backward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
+                    let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
+                    let new_recv_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
+                    
+                    if state.forward_ip_addr != new_recv_addr {
+                        state.backward_ip_addr = new_recv_addr;
                         println!(" (Set Backward IP)");
                     }
                 } else if cmd == "\\SetForwardIP"{
-                    if state.backward_ip_addr.ip().to_string() != data {
-                        let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
-                        state.forward_ip_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
+                    let (oct1, oct2, oct3, oct4, port) = decryption(&data.to_string());
+                    let new_recv_addr = SocketAddr::new(Ipv4Addr::new(oct1,oct2,oct3,oct4).into(), port);
+
+                    if state.backward_ip_addr != new_recv_addr {
+                        state.forward_ip_addr = new_recv_addr;
                         println!(" (Set Forward IP)");
                     }
                 } else {

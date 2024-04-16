@@ -20,6 +20,18 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
+  WindowOptions windowOptions = WindowOptions(
+    size: Size(350, 600), // Set the initial size
+    center: true, // Center the window
+    backgroundColor: Colors.transparent, // Set background color
+    titleBarStyle: TitleBarStyle.normal, // Set the title bar style
+  );
+
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
+
   await localNotifier.setup(
     appName: 'mookscord',
     shortcutPolicy: ShortcutPolicy.requireCreate,
@@ -120,37 +132,31 @@ class _MainBody extends State<MainBody> with WidgetsBindingObserver {
     
   }
 
-  StreamBuilder? recvstream;
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed) {
-      print("App is in Foreground");
-      recvstream = StreamBuilder(
-        stream: RecvMessage.rustSignalStream,
-        builder: (context, snapshot) {
-          final rustSignal = snapshot.data;
-          RecvMessage.create().clear();
-          return Text("");
-        }
-      );
-    } else {
-      print("App is in Background");
-      recvstream = StreamBuilder(
-        stream: RecvMessage.rustSignalStream,
-        builder: (context, snapshot) {
-          final rustSignal = snapshot.data;
-          if (snapshot.hasData && rustSignal != null) {
-            // Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
-            showNotification(rustSignal.message.contents);
-            RecvMessage.create().clear();
-          }
-          return Text("");
-        }
-      );
-      setState(() { });
-    }
-  }
+  // StreamBuilder? recvstream = StreamBuilder(
+  //   stream: RecvMessage.rustSignalStream,
+  //   builder: (context, snapshot) {
+  //     final rustSignal = snapshot.data;
+  //     if (snapshot.hasData && rustSignal != null) {
+  //       // context.read<InfoProvider>().addmessage(false, rustSignal.message.who, rustSignal.message.contents);
+  //       if (context.watch<InfoProvider>().isactivenotifier) { showNotification(rustSignal.message.contents); }
+  //     }
+  //     return Text("");
+  //   }
+  // );
+  // @override
+  // void didChangeAppLifecycleState(AppLifecycleState state) {
+  //   super.didChangeAppLifecycleState(state);
+  //   if (state == AppLifecycleState.resumed) {
+  //     print("App is in Foreground");
+  //     if (context.read<InfoProvider>().isactivenotifier)
+  //       context.read<InfoProvider>().setnotifier(false);
+  //   } else {
+  //     print("App is in Background");
+  //     if (!context.read<InfoProvider>().isactivenotifier)
+  //       context.read<InfoProvider>().setnotifier(true);
+  //   }
+  // }
+            
 
   @override
   Widget build(BuildContext context) {
@@ -158,7 +164,6 @@ class _MainBody extends State<MainBody> with WidgetsBindingObserver {
     return Scaffold(
       body: Row(
         children: [
-          Container(child: recvstream),
           Container(
             margin: EdgeInsets.fromLTRB(5, 5, 0, 5),
             child: SidebarX(

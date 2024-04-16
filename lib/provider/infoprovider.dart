@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 
 class InfoProvider with ChangeNotifier {
 
+  bool isactivenotifier = false;
+  void setnotifier(bool b) {
+    isactivenotifier = b;
+    // notifyListeners();
+  }
+
   String name = "";
   void setName(String nnn) {
     if (nnn.isNotEmpty)
@@ -12,7 +18,10 @@ class InfoProvider with ChangeNotifier {
   List<MessagePair> messagesList = [];
   void addmessage(bool me, String name, String mssg) {
     if(name.isNotEmpty && mssg.isNotEmpty)
+    {
       messagesList.insert(0, MessagePair(me, name, mssg));
+    }
+
   }
 
 }

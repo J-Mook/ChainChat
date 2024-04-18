@@ -243,6 +243,7 @@ class ChatRoom extends StatefulWidget {
 class _ChatRoomState extends State<ChatRoom> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  int? lastHashStream;
 
   @override
   Widget build(BuildContext context) {
@@ -259,15 +260,19 @@ class _ChatRoomState extends State<ChatRoom> {
         builder: (context, snapshot) {
           final rustSignal = snapshot.data;
           if (snapshot.hasData && rustSignal != null) {
-            Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
-            RecvMessage.create().clear();
+             if (snapshot.data.hashCode != lastHashStream) {
+              Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
+              lastHashStream ??= snapshot.data.hashCode;
+             }
           }
           return ListView.builder(
             reverse: true,
             itemCount: messagesList.length,
             itemBuilder: (context, index) {
-              return ListTile(
-                title: Row(
+              return Container(
+                // contentPadding: EdgeInsets.fromLTRB(10, 0, 10, 0),
+                padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+                child: Row(
                   mainAxisAlignment: messagesList[index].me ? MainAxisAlignment.end : MainAxisAlignment.start,
                   children: [
                     if (!messagesList[index].me) ...[
@@ -275,11 +280,11 @@ class _ChatRoomState extends State<ChatRoom> {
                       SizedBox(width: 10),
                     ],
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                      margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                      margin: EdgeInsets.symmetric(vertical: 1, horizontal: 1),
                       decoration: BoxDecoration(
                         color: messagesList[index].me ? Colors.blue : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         messagesList[index].msg,

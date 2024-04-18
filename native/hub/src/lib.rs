@@ -27,12 +27,33 @@ struct SharedState {
     backward_ip_addr: SocketAddr,
 }
 
-const SELF_RECV_PORT:u16 = 6112;
+// const SELF_RECV_PORT:u16 = 9612;
 
 async fn main() {
-    
+
     let local_ip = local_ip().unwrap();
-    let socket_recv = UdpSocket::bind(SocketAddr::new(local_ip.into(), 0)).await.unwrap();
+    let mut port = 9612;
+    let mut socket_rec: Option<UdpSocket> = None;
+    loop {
+        let socket_result = UdpSocket::bind(SocketAddr::new(local_ip.into(), port)).await;
+        
+        match socket_result {
+            Ok(socket) => {
+                socket_rec = Some(socket);
+                break;
+            },
+            Err(e) => {
+                port += 1;
+                if port > 65535 {
+                    break;
+                }
+            }
+        }
+    }
+    let SELF_RECV_PORT:u16 = port;
+    let socket_recv = socket_rec.unwrap();
+    // let mut socket_recv = UdpSocket::bind(SocketAddr::new(local_ip.into(), SELF_RECV_PORT)).await.unwrap();
+
     let self_recv_addr = socket_recv.local_addr().unwrap();
     let self_send_addr = "0.0.0.0:0";
     
@@ -76,12 +97,17 @@ async fn main() {
                 else if state.backward_ip_addr.ip() == recv_addr.ip() {
                     if state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
                         print!(" to {}", state.forward_ip_addr);
-                        let ret = socket_recv.send_to(msg.as_bytes(), &state.forward_ip_addr).await;
+                        let ret = socket_recv.send_to( msg.as_bytes(), &state.forward_ip_addr).await;
                         match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
                     }
                 } else {
                     println!(" (Unkown Addr)");
                 }
+                // RecvMessage{
+                //     who: "".to_string(),
+                //     contents: "".to_string(),
+                // }.send_signal_to_dart(None);
+
             } else {
                 let cmd = &msg[..msg.find(" ").unwrap()];
                 let data = &msg[msg.find(" ").unwrap()+1..];

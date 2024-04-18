@@ -44,9 +44,7 @@ async fn main() {
             },
             Err(e) => {
                 port += 1;
-                if port > 65535 {
-                    break;
-                }
+                if port > 65535 { break; }
             }
         }
     }
@@ -103,10 +101,6 @@ async fn main() {
                 } else {
                     println!(" (Unkown Addr)");
                 }
-                // RecvMessage{
-                //     who: "".to_string(),
-                //     contents: "".to_string(),
-                // }.send_signal_to_dart(None);
 
             } else {
                 let cmd = &msg[..msg.find(" ").unwrap()];
@@ -178,10 +172,6 @@ async fn main() {
                 let ret = socket.send_to(send_msg.as_bytes(), &state.backward_ip_addr).await;
                 match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
             }
-            RecvMessage{
-                who: "".to_string(),
-                contents: "".to_string(),
-            }.send_signal_to_dart(None);
         }
     });
     let mut _password_generate: tokio::sync::mpsc::Receiver<rinf::DartSignal<GetMyPassword>> = GetMyPassword::get_dart_signal_receiver();
@@ -238,6 +228,15 @@ async fn main() {
             let ret = socket.send_to(format!("\\SetBackwardIP {}", encryptionIP(state.backward_ip_addr)).as_bytes(), &state.forward_ip_addr).await; // SetBackwardIP backIP
             match ret { Ok(_) => println!(" (Ok)"), Err(_) => println!(" (Fail)") };
             
+        }
+    });
+    let mut _message_clear: tokio::sync::mpsc::Receiver<rinf::DartSignal<ClearMessage>> = ClearMessage::get_dart_signal_receiver();
+    tokio::spawn(async move {
+        while let Some(dart_signal) = _message_clear.recv().await {
+            RecvMessage{
+                who: "".to_string(),
+                contents: "".to_string(),
+            }.send_signal_to_dart(None);
         }
     });
 }

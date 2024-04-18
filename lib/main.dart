@@ -243,7 +243,6 @@ class ChatRoom extends StatefulWidget {
 class _ChatRoomState extends State<ChatRoom> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  int? lastHashStream;
 
   @override
   Widget build(BuildContext context) {
@@ -260,10 +259,8 @@ class _ChatRoomState extends State<ChatRoom> {
         builder: (context, snapshot) {
           final rustSignal = snapshot.data;
           if (snapshot.hasData && rustSignal != null) {
-             if (snapshot.data.hashCode != lastHashStream) {
-              Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
-              lastHashStream ??= snapshot.data.hashCode;
-             }
+            Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
+            ClearMessage().sendSignalToRust(null);
           }
           return ListView.builder(
             reverse: true,

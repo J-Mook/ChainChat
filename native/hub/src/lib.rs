@@ -25,8 +25,11 @@ struct SharedState {
     my_name: String,
     forward_ip_addr: SocketAddr,
     backward_ip_addr: SocketAddr,
+    profile_color: s_RGB,
 }
 
+#[derive(Clone)]
+struct s_RGB(u8, u8, u8);
 // const SELF_RECV_PORT:u16 = 9612;
 
 async fn main() {
@@ -59,6 +62,7 @@ async fn main() {
         my_name: local_ip.to_string(),
         forward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
         backward_ip_addr: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
+        profile_color: s_RGB(0, 0, 0),
     }));
 
     let a_shared_state_exiter = Arc::clone(&shared_state);
@@ -76,12 +80,23 @@ async fn main() {
             
             if msg.chars().nth(0) != Some('\\') {
 
-                let whoname = &msg[..msg.find(":").unwrap()];
-                let msg_context = &msg[msg.find(":").unwrap()+1..];
+                let msg_parts: Vec<&str> = msg.split(':').collect();
+                let whoname = msg_parts[0];
+                let color_parts: Vec<&str> = msg_parts[1].split(',').collect();
+                let rrr: u32 = color_parts[0].parse().unwrap();
+                let ggg: u32 = color_parts[1].parse().unwrap();
+                let bbb: u32 = color_parts[2].parse().unwrap();
+                // let color: s_RGB = s_RGB(rrr, ggg, bbb);
+                let msg_context = msg_parts[2];
 
                 RecvMessage{
                     who: whoname.to_string(),
                     contents: msg_context.to_string(),
+                    profilecolor: Some(PColors {
+                        rrr: rrr,
+                        ggg: ggg,
+                        bbb: bbb,
+                    }),
                 }.send_signal_to_dart(None);
                 print!("Received: {} from {}", msg, recv_addr);
 
@@ -161,7 +176,8 @@ async fn main() {
             let msg = dart_signal.message;
             let state = a_shared_state_sender.lock().await;
             
-            let send_msg = format!("{}:{}", state.my_name, msg.contents);
+            let color_info = format!("{},{},{}", state.profile_color.0, state.profile_color.1, state.profile_color.2);
+            let send_msg = format!("{}:{}:{}", state.my_name, color_info, msg.contents);
             
             print!("Client sent: {}", send_msg);
             if state.forward_ip_addr.ip() != Ipv4Addr::new(0, 0, 0, 0) {
@@ -215,6 +231,11 @@ async fn main() {
             let msg = dart_signal.message;
             let mut state = a_shared_state_knocker.lock().await;
             state.my_name = msg.name;
+            state.profile_color = s_RGB(
+                rand::thread_rng().gen_range(0..=255),
+                rand::thread_rng().gen_range(0..=255),
+                rand::thread_rng().gen_range(0..=255)
+            );
         }
     });
 
@@ -236,6 +257,11 @@ async fn main() {
             RecvMessage{
                 who: "".to_string(),
                 contents: "".to_string(),
+                profilecolor: Some(PColors {
+                    rrr: 0,
+                    ggg: 0,
+                    bbb: 0,
+                }),
             }.send_signal_to_dart(None);
         }
     });

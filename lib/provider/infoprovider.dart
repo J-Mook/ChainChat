@@ -1,3 +1,4 @@
+import 'package:chain_chat/messages/chatmessage.pb.dart';
 import 'package:flutter/material.dart';
 
 class InfoProvider with ChangeNotifier {
@@ -16,10 +17,11 @@ class InfoProvider with ChangeNotifier {
   }
 
   List<MessagePair> messagesList = [];
-  void addmessage(bool me, String name, String mssg) {
+  void addmessage(bool me, String name, String mssg, PColors ccc) {
     if(name.isNotEmpty && mssg.isNotEmpty)
     {
-      messagesList.insert(0, MessagePair(me, name, mssg));
+      Color pc = Color .fromARGB(255, (ccc.rrr / 2 + 128).toInt(), (ccc.bbb / 2 + 128).toInt(), (ccc.ggg / 2 + 128).toInt());
+      messagesList.insert(0, MessagePair(me, name, mssg, pc));
     }
 
   }
@@ -30,6 +32,7 @@ class MessagePair {
   bool me;
   String name;
   String msg;
+  Color ccc;
 
-  MessagePair(this.me, this.name, this.msg);
+  MessagePair(this.me, this.name, this.msg, this.ccc);
 }

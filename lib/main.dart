@@ -259,7 +259,8 @@ class _ChatRoomState extends State<ChatRoom> {
         builder: (context, snapshot) {
           final rustSignal = snapshot.data;
           if (snapshot.hasData && rustSignal != null) {
-            Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
+            final rmsg = rustSignal.message;
+            Provider.of<InfoProvider>(context).addmessage(false, rmsg.who, rmsg.contents, rmsg.profilecolor);
             ClearMessage().sendSignalToRust(null);
           }
           return ListView.builder(
@@ -273,7 +274,10 @@ class _ChatRoomState extends State<ChatRoom> {
                   mainAxisAlignment: messagesList[index].me ? MainAxisAlignment.end : MainAxisAlignment.start,
                   children: [
                     if (!messagesList[index].me) ...[
-                      CircleAvatar(child: Text(messagesList[index].name)), // 다른 사람의 메시지에는 아바타 표시
+                      CircleAvatar(
+                        backgroundColor: messagesList[index].ccc,
+                        child: Text(messagesList[index].name),
+                      ),
                       SizedBox(width: 10),
                     ],
                     Container(
@@ -317,7 +321,7 @@ class _ChatRoomState extends State<ChatRoom> {
                 ),
                 onSubmitted: (value){
                   if (_controller.text.isNotEmpty) {
-                    info.addmessage(true, "Me", _controller.text);
+                    info.addmessage(true, "Me", _controller.text, PColors(rrr: 0, ggg: 0, bbb: 0));
                     SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
                     _controller.clear();
                     FocusScope.of(context).requestFocus(_focusNode);
@@ -329,7 +333,7 @@ class _ChatRoomState extends State<ChatRoom> {
               icon: Icon(Icons.send),
               onPressed: () {
                if (_controller.text.isNotEmpty) {
-                  info.addmessage(true, "Me", _controller.text);
+                  info.addmessage(true, "Me", _controller.text, PColors(rrr: 0, ggg: 0, bbb: 0));
                   SendMessage(who: 'HIHI', contents: _controller.text).sendSignalToRust(null);
                   _controller.clear();
                   FocusScope.of(context).requestFocus(_focusNode);
@@ -431,7 +435,9 @@ class _EntranceCodeInputPageState extends State<EntranceCodeInputPage> {
                 builder: (context, snapshot) {
                   final rustSignal = snapshot.data;
                   if (snapshot.hasData && rustSignal != null) {
-                    Provider.of<InfoProvider>(context).addmessage(false, rustSignal.message.who, rustSignal.message.contents);
+                    final rmsg = rustSignal.message;
+                    Provider.of<InfoProvider>(context).addmessage(false, rmsg.who, rmsg.contents, rmsg.profilecolor);
+                    ClearMessage().sendSignalToRust(null);
                   }
                   return Text("");
                 }

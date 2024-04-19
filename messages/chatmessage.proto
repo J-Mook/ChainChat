@@ -35,4 +35,12 @@ message KnockIP {
 message RecvMessage {
   string who = 1;
   string contents = 2;
+  PColors profilecolor = 3;
 }
+message PColors {
+  uint32 rrr = 1;
+  uint32 ggg = 2;
+  uint32 bbb = 3;
+}
+
+

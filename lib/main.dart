@@ -24,12 +24,14 @@ void main() async {
     size: Size(350, 600), // Set the initial size
     center: true, // Center the window
     backgroundColor: Colors.transparent, // Set background color
-    titleBarStyle: TitleBarStyle.normal, // Set the title bar style
-  );
+    titleBarStyle: TitleBarStyle.hidden,
+    windowButtonVisibility: false,
 
+  );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
+    await windowManager.setPreventClose(true);
   });
 
   await localNotifier.setup(
@@ -162,6 +164,7 @@ class _MainBody extends State<MainBody> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return Scaffold(
+      appBar: DefAppBar(context),
       body: Row(
         children: [
           Container(
@@ -253,6 +256,7 @@ class _ChatRoomState extends State<ChatRoom> {
       appBar: AppBar(
         title: Text('Chat Room'),
         automaticallyImplyLeading: false,
+        toolbarHeight: 20,
       ),
       body: StreamBuilder(
         stream: RecvMessage.rustSignalStream,
@@ -276,7 +280,8 @@ class _ChatRoomState extends State<ChatRoom> {
                     if (!messagesList[index].me) ...[
                       CircleAvatar(
                         backgroundColor: messagesList[index].ccc,
-                        child: Text(messagesList[index].name),
+                        child: Text(messagesList[index].name, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis),
+                        // child: Icon(Icons.person),
                       ),
                       SizedBox(width: 10),
                     ],
@@ -465,9 +470,7 @@ class _EntrancePageState extends State<EntrancePage> {
     nameController.text = info.name;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('채팅방 입장'),
-      ),
+      appBar: DefAppBar(context),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -519,4 +522,40 @@ class _EntrancePageState extends State<EntrancePage> {
     codeController.dispose();
     super.dispose();
   }
+}
+
+PreferredSizeWidget DefAppBar(BuildContext context) {
+  final themeProvider = Provider.of<ThemeProvider>(context);
+  return AppBar(
+    title: DragToMoveArea(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Text("Mookscord", style: TextStyle(fontSize: 15, color: themeProvider.isDarkMode ? Colors.white : Colors.black),),
+          Expanded(child: Text(""),)
+        ],
+      ),
+    ),
+    // leading: Text(""),
+    // leading: IconButton(
+    //   padding: EdgeInsets.all(2),
+    //   onPressed:() => Navigator.of(context).pop(true),
+    //   icon: Icon(SimpleIcons.flutter, color: themeProvider.isDarkMode ? Colors.white : Colors.black,),
+    //   iconSize: 15,
+    // ),
+    automaticallyImplyLeading: false,
+    toolbarHeight: 40,
+    actions: <Widget>[
+      IconButton(
+        padding: EdgeInsets.all(2),
+        onPressed:() {
+          ExitSignal().sendSignalToRust(null);
+          exit(0);
+        },
+        icon: Icon(Icons.close, color: themeProvider.isDarkMode ? Colors.white : Colors.black,),
+        iconSize: 15,
+      ),
+    ],
+    backgroundColor: Colors.amber,
+  );
 }
